@@ -7,7 +7,8 @@ import 'key_data_interface.dart';
 enum ViewOnlyWalletType {
   cryptonote,
   addressOnly,
-  xPub;
+  xPub,
+  spark;
 }
 
 sealed class ViewOnlyWalletData with KeyDataInterface {
@@ -46,6 +47,9 @@ sealed class ViewOnlyWalletData with KeyDataInterface {
           jsonEncodedString,
           walletId: walletId,
         );
+
+      case ViewOnlyWalletType.spark:
+        throw UnimplementedError('Spark view only wallet type not implemented');
     }
   }
 
