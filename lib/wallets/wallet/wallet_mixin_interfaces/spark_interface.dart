@@ -2098,6 +2098,7 @@ Future<
     allAnonymitySets: args.allAnonymitySets,
     idAndBlockHashes: args.idAndBlockHashes,
     txHash: args.txHash,
+    additionalTxSize: 0, // TODO: add this
   );
 
   return spend;
@@ -2245,6 +2246,8 @@ int _estSparkFeeComputeFunc(
     subtractFeeFromAmount: args.subtractFeeFromAmount,
     serializedCoins: args.serializedCoins,
     privateRecipientsCount: args.privateRecipientsCount,
+    additionalTxSize: 0, // TODO: add this
+    utxoNum: 0, // TODO: add this
   );
 
   return est;
