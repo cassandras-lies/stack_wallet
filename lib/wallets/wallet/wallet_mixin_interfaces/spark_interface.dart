@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:isolate';
 import 'dart:math';
+import 'dart:ffi';
 
 import 'package:bitcoindart/bitcoindart.dart' as btc;
 import 'package:decimal/decimal.dart';
@@ -834,18 +835,33 @@ mixin SparkInterface<T extends ElectrumXCurrencyInterface>
       final result = <SparkCoin>[];
 
       // if there is new data we try and identify the coins
+      List<SparkCoin> myCoins = [];
       if (rawCoins.isNotEmpty) {
-        // run identify off main isolate
-        final myCoins = await computeWithLibSparkLogging(
-          _identifyCoins,
-          (
-            anonymitySetCoins: rawCoins,
-            groupId: groupId,
-            privateKeyHexSet: privateKeyHexSet,
-            walletId: walletId,
-            isTestNet: cryptoCurrency.network.isTestNet,
-          ),
-        );
+        if (isViewOnly) {
+          final viewOnlyData = await getViewOnlyWalletData();
+          myCoins = await computeWithLibSparkLogging(
+            _identifyCoins,
+            (
+              anonymitySetCoins: rawCoins,
+              groupId: groupId,
+              privateKeyHexSet: privateKeyHexSet,
+              walletId: walletId,
+              isTestNet: cryptoCurrency.network.isTestNet,
+            ),
+          );
+        } else {
+          // run identify off main isolate
+          myCoins = await computeWithLibSparkLogging(
+            _identifyCoins,
+            (
+              anonymitySetCoins: rawCoins,
+              groupId: groupId,
+              privateKeyHexSet: privateKeyHexSet,
+              walletId: walletId,
+              isTestNet: cryptoCurrency.network.isTestNet,
+            ),
+          );
+        }
 
         // add checked txids after identification
         _mempoolTxidsChecked.addAll(checkedTxids);
@@ -2114,9 +2130,34 @@ Future<List<SparkCoin>> _identifyCoins(
     bool isTestNet,
   }) args,
 ) async {
+  final fullViewKeySet = args.privateKeyHexSet.map((h) => LibSpark.getFullViewKeyFromPrivateKeyData(privateKeyHex: h, index: kDefaultSparkIndex));
+  final ret = await _identifyCoinsByFullViewKey((
+    anonymitySetCoins: args.anonymitySetCoins,
+    groupId: args.groupId,
+    fullViewKeySet: fullViewKeySet.toSet(),
+    walletId: args.walletId,
+    isTestNet: args.isTestNet,
+  ));
+
+  for (final fullViewKey in fullViewKeySet) {
+    LibSpark.deleteFullViewKey(fullViewKey);
+  }
+
+  return ret;
+}
+
+Future<List<SparkCoin>> _identifyCoinsByFullViewKey(
+  ({
+    List<dynamic> anonymitySetCoins,
+    int groupId,
+    Set<Pointer<Void>> fullViewKeySet,
+    String walletId,
+    bool isTestNet,
+  }) args,
+) async {
   final List<SparkCoin> myCoins = [];
 
-  for (final privateKeyHex in args.privateKeyHexSet) {
+  for (final fullViewKey in args.fullViewKeySet) {
     for (final dynData in args.anonymitySetCoins) {
       final data = List<String>.from(dynData as List);
 
@@ -2128,10 +2169,9 @@ Future<List<SparkCoin>> _identifyCoins(
       final txHash = data[1].toHexReversedFromBase64;
       final contextB64 = data[2];
 
-      final coin = LibSpark.identifyAndRecoverCoin(
-        serializedCoinB64,
-        privateKeyHex: privateKeyHex,
-        index: kDefaultSparkIndex,
+      final coin = LibSpark.identifyAndRecoverCoinByFullViewKey(
+        serializedCoin: serializedCoinB64,
+        fullViewKey: fullViewKey,
         context: base64Decode(contextB64),
         isTestNet: args.isTestNet,
       );
