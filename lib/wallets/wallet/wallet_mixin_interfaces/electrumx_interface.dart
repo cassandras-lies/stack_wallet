@@ -1908,7 +1908,7 @@ mixin ElectrumXInterface<T extends ElectrumXCurrencyInterface>
     final data = await getViewOnlyWalletData();
 
     final coinlib.HDKey? root;
-    if (data is AddressViewOnlyWalletData) {
+    if (data is AddressViewOnlyWalletData || data is SparkViewOnlyWalletData) {
       root = null;
     } else {
       if ((data as ExtendedKeysViewOnlyWalletData).xPubs.length != 1) {

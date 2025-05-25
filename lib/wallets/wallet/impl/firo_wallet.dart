@@ -25,6 +25,7 @@ import '../wallet_mixin_interfaces/electrumx_interface.dart';
 import '../wallet_mixin_interfaces/extended_keys_interface.dart';
 import '../wallet_mixin_interfaces/lelantus_interface.dart';
 import '../wallet_mixin_interfaces/spark_interface.dart';
+import '../../../models/keys/view_only_wallet_data.dart';
 
 const sparkStartBlock = 819300; // (approx 18 Jan 2024)
 
@@ -665,7 +666,7 @@ class FiroWallet<T extends ElectrumXCurrencyInterface> extends Bip39HDWallet<T>
 
   @override
   Future<void> recover({required bool isRescan}) async {
-    if (isViewOnly) {
+    if (isViewOnly && viewOnlyType != ViewOnlyWalletType.spark) {
       await recoverViewOnly(isRescan: isRescan);
       return;
     }
