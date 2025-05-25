@@ -225,7 +225,14 @@ class _RestoreViewOnlyWalletViewState
           break;
 
         case ViewOnlyWalletType.spark:
-          throw UnimplementedError('Spark view only wallet type not implemented');
+          if (sparkViewKeyController.text.isEmpty) {
+            throw Exception("Spark View Key is empty");
+          }
+          viewOnlyData = SparkViewOnlyWalletData(
+            walletId: info.walletId,
+            viewKey: sparkViewKeyController.text,
+          );
+          break;
       }
 
       var node = ref

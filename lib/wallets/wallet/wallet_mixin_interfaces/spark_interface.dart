@@ -172,12 +172,30 @@ mixin SparkInterface<T extends ElectrumXCurrencyInterface>
         }
         final keys = root.derivePath(derivationPath);
 
-        _sparkChangeAddressCached = await LibSpark.getAddress(
-          privateKey: keys.privateKey.data,
-          index: kDefaultSparkIndex,
-          diversifier: kSparkChange,
-          isTestNet: cryptoCurrency.network.isTestNet,
-        );
+        if (isViewOnly) {
+          final walletData = await getViewOnlyWalletData();
+          if (walletData is SparkViewOnlyWalletData) {
+            final fullViewKey = LibSpark.deserializeFullViewKey(
+              fullViewKeyHex: walletData.viewKey,
+              index: kDefaultSparkIndex,
+            );
+            final address = await LibSpark.getAddressFromFullViewKey(
+              fullViewKey: fullViewKey,
+              index: kDefaultSparkIndex,
+              diversifier: kSparkChange,
+              isTestNet: cryptoCurrency.network.isTestNet,
+            );
+            _sparkChangeAddressCached = address;
+            LibSpark.deleteFullViewKey(fullViewKey);
+          }
+        } else {
+          _sparkChangeAddressCached = await LibSpark.getAddress(
+            privateKey: keys.privateKey.data,
+            index: kDefaultSparkIndex,
+            diversifier: kSparkChange,
+            isTestNet: cryptoCurrency.network.isTestNet,
+          );
+        }
       }
     } catch (e, s) {
       // do nothing, still allow user into wallet
@@ -240,12 +258,32 @@ mixin SparkInterface<T extends ElectrumXCurrencyInterface>
     }
     final keys = root.derivePath(derivationPath);
 
-    final String addressString = await LibSpark.getAddress(
-      privateKey: keys.privateKey.data,
-      index: kDefaultSparkIndex,
-      diversifier: diversifier,
-      isTestNet: cryptoCurrency.network.isTestNet,
-    );
+    final String addressString;
+    if (isViewOnly) {
+      final walletData = await getViewOnlyWalletData();
+      if (walletData is SparkViewOnlyWalletData) {
+        final fullViewKey = LibSpark.deserializeFullViewKey(
+          fullViewKeyHex: walletData.viewKey,
+          index: kDefaultSparkIndex,
+        );
+        addressString = await LibSpark.getAddressFromFullViewKey(
+          fullViewKey: fullViewKey,
+          index: kDefaultSparkIndex,
+          diversifier: diversifier,
+          isTestNet: cryptoCurrency.network.isTestNet,
+        );
+        LibSpark.deleteFullViewKey(fullViewKey);
+      } else {
+        throw Exception("Wallet data is not a SparkViewOnlyWalletData");
+      }
+    } else {
+      addressString = await LibSpark.getAddress(
+        privateKey: keys.privateKey.data,
+        index: kDefaultSparkIndex,
+        diversifier: diversifier,
+        isTestNet: cryptoCurrency.network.isTestNet,
+      );
+    }
 
     return Address(
       walletId: walletId,
