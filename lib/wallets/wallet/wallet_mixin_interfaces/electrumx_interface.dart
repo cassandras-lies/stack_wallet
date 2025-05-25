@@ -1308,7 +1308,9 @@ mixin ElectrumXInterface<T extends ElectrumXCurrencyInterface>
 
   @override
   Future<void> checkReceivingAddressForTransactions() async {
-    if (isViewOnly && viewOnlyType == ViewOnlyWalletType.addressOnly) {
+    if (isViewOnly &&
+        (viewOnlyType == ViewOnlyWalletType.addressOnly ||
+            viewOnlyType == ViewOnlyWalletType.spark)) {
       return;
     }
 
@@ -1363,7 +1365,9 @@ mixin ElectrumXInterface<T extends ElectrumXCurrencyInterface>
 
   @override
   Future<void> checkChangeAddressForTransactions() async {
-    if (isViewOnly && viewOnlyType == ViewOnlyWalletType.addressOnly) {
+    if (isViewOnly &&
+        (viewOnlyType == ViewOnlyWalletType.addressOnly ||
+            viewOnlyType == ViewOnlyWalletType.spark)) {
       return;
     }
 

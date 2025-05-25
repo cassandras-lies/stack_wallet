@@ -680,7 +680,6 @@ class FiroWallet<T extends ElectrumXCurrencyInterface> extends Bip39HDWallet<T>
     );
 
     final start = DateTime.now();
-    final root = await getRootHDNode();
 
     final List<Future<({int index, List<Address> addresses})>> receiveFutures =
         [];
@@ -743,40 +742,44 @@ class FiroWallet<T extends ElectrumXCurrencyInterface> extends Bip39HDWallet<T>
 
         final canBatch = await serverCanBatch;
 
-        for (final type in cryptoCurrency.supportedDerivationPathTypes) {
-          receiveFutures.add(
-            canBatch
-                ? checkGapsBatched(
-                    txCountBatchSize,
-                    root,
-                    type,
-                    receiveChain,
-                  )
-                : checkGapsLinearly(
-                    root,
-                    type,
-                    receiveChain,
-                  ),
-          );
-        }
+        if (!isViewOnly && viewOnlyType == ViewOnlyWalletType.spark) {
+          final root = await getRootHDNode();
 
-        // change addresses
-        Logging.instance.d("checking change addresses...");
-        for (final type in cryptoCurrency.supportedDerivationPathTypes) {
-          changeFutures.add(
-            canBatch
-                ? checkGapsBatched(
-                    txCountBatchSize,
-                    root,
-                    type,
-                    changeChain,
-                  )
-                : checkGapsLinearly(
-                    root,
-                    type,
-                    changeChain,
-                  ),
-          );
+          for (final type in cryptoCurrency.supportedDerivationPathTypes) {
+            receiveFutures.add(
+              canBatch
+                  ? checkGapsBatched(
+                      txCountBatchSize,
+                      root,
+                      type,
+                      receiveChain,
+                    )
+                  : checkGapsLinearly(
+                      root,
+                      type,
+                      receiveChain,
+                    ),
+            );
+          }
+
+          // change addresses
+          Logging.instance.d("checking change addresses...");
+          for (final type in cryptoCurrency.supportedDerivationPathTypes) {
+            changeFutures.add(
+              canBatch
+                  ? checkGapsBatched(
+                      txCountBatchSize,
+                      root,
+                      type,
+                      changeChain,
+                    )
+                  : checkGapsLinearly(
+                      root,
+                      type,
+                      changeChain,
+                    ),
+            );
+          }
         }
 
         // io limitations may require running these linearly instead
