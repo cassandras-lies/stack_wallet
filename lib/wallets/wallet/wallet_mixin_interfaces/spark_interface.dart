@@ -33,6 +33,7 @@ import '../../models/tx_data.dart';
 import '../intermediate/bip39_hd_wallet.dart';
 import 'cpfp_interface.dart';
 import 'electrumx_interface.dart';
+import '../../../models/keys/view_only_wallet_data.dart';
 
 const kDefaultSparkIndex = 1;
 
@@ -838,17 +839,29 @@ mixin SparkInterface<T extends ElectrumXCurrencyInterface>
       List<SparkCoin> myCoins = [];
       if (rawCoins.isNotEmpty) {
         if (isViewOnly) {
-          final viewOnlyData = await getViewOnlyWalletData();
+          final walletData = await getViewOnlyWalletData();
+          Pointer<Void> viewKey;
+          if (walletData is SparkViewOnlyWalletData) {
+            viewKey = LibSpark.deserializeFullViewKey(
+              fullViewKeyHex: walletData.viewKey,
+              index: kDefaultSparkIndex,
+            );
+          } else {
+            throw Exception("Wallet data is not a SparkViewOnlyWalletData");
+          }
+
           myCoins = await computeWithLibSparkLogging(
-            _identifyCoins,
+            _identifyCoinsByFullViewKey,
             (
               anonymitySetCoins: rawCoins,
               groupId: groupId,
-              privateKeyHexSet: privateKeyHexSet,
+              fullViewKeySet: {viewKey},
               walletId: walletId,
               isTestNet: cryptoCurrency.network.isTestNet,
             ),
           );
+
+          LibSpark.deleteFullViewKey(viewKey);
         } else {
           // run identify off main isolate
           myCoins = await computeWithLibSparkLogging(
@@ -1038,16 +1051,43 @@ mixin SparkInterface<T extends ElectrumXCurrencyInterface>
       // try to identify any coins in the unchecked set data
       final List<SparkCoin> newlyIdCoins = [];
       for (final groupId in rawCoinsBySetId.keys) {
-        final myCoins = await computeWithLibSparkLogging(
-          _identifyCoins,
-          (
-            anonymitySetCoins: rawCoinsBySetId[groupId]!,
-            groupId: groupId,
-            privateKeyHexSet: privateKeyHexSet,
-            walletId: walletId,
-            isTestNet: cryptoCurrency.network.isTestNet,
-          ),
-        );
+        List<SparkCoin> myCoins = [];
+        if (isViewOnly) {
+          final walletData = await getViewOnlyWalletData();
+          Pointer<Void> viewKey;
+          if (walletData is SparkViewOnlyWalletData) {
+            viewKey = LibSpark.deserializeFullViewKey(
+              fullViewKeyHex: walletData.viewKey,
+              index: kDefaultSparkIndex,
+            );
+          } else {
+            throw Exception("Wallet data is not a SparkViewOnlyWalletData");
+          }
+
+          myCoins = await computeWithLibSparkLogging(
+            _identifyCoinsByFullViewKey,
+            (
+              anonymitySetCoins: rawCoinsBySetId[groupId]!,
+              groupId: groupId,
+              fullViewKeySet: {viewKey},
+              walletId: walletId,
+              isTestNet: cryptoCurrency.network.isTestNet,
+            ),
+          );
+
+          LibSpark.deleteFullViewKey(viewKey);
+        } else {
+          myCoins = await computeWithLibSparkLogging(
+            _identifyCoins,
+            (
+              anonymitySetCoins: rawCoinsBySetId[groupId]!,
+              groupId: groupId,
+              privateKeyHexSet: privateKeyHexSet,
+              walletId: walletId,
+              isTestNet: cryptoCurrency.network.isTestNet,
+            ),
+          );
+        }
         newlyIdCoins.addAll(myCoins);
       }
       // if any were found, add to database

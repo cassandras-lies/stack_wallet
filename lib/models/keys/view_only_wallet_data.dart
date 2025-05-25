@@ -49,7 +49,10 @@ sealed class ViewOnlyWalletData with KeyDataInterface {
         );
 
       case ViewOnlyWalletType.spark:
-        throw UnimplementedError('Spark view only wallet type not implemented');
+        return SparkViewOnlyWalletData.fromJsonEncodedString(
+          jsonEncodedString,
+          walletId: walletId,
+        );
     }
   }
 
@@ -164,5 +167,36 @@ class ExtendedKeysViewOnlyWalletData extends ViewOnlyWalletData {
             },
           ),
         ],
+      });
+}
+
+class SparkViewOnlyWalletData extends ViewOnlyWalletData {
+  @override
+  final type = ViewOnlyWalletType.spark;
+
+  final String viewKey;
+
+  SparkViewOnlyWalletData({
+    required super.walletId,
+    required this.viewKey,
+  });
+
+  static SparkViewOnlyWalletData fromJsonEncodedString(
+    String jsonEncodedString, {
+    required String walletId,
+  }) {
+    final map = jsonDecode(jsonEncodedString) as Map;
+    final json = Map<String, dynamic>.from(map);
+
+    return SparkViewOnlyWalletData(
+      walletId: walletId,
+      viewKey: json["viewKey"] as String,
+    );
+  }
+
+  @override
+  String toJsonEncodedString() => jsonEncode({
+        "type": type.index,
+        "viewKey": viewKey,
       });
 }
