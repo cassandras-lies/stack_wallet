@@ -2265,6 +2265,9 @@ Future<List<SparkCoin>> _identifyCoinsByFullViewKey(
 ) async {
   final List<SparkCoin> myCoins = [];
 
+  debugPrint("fullViewKeySet: ${args.fullViewKeySet.length}");
+  debugPrint("anonymitySetCoins: ${args.anonymitySetCoins.length}");
+
   for (final fullViewKey in args.fullViewKeySet) {
     for (final dynData in args.anonymitySetCoins) {
       final data = List<String>.from(dynData as List);
