@@ -854,7 +854,7 @@ mixin SparkInterface<T extends ElectrumXCurrencyInterface>
   Set<String> _mempoolTxidsChecked = {};
 
   Future<List<SparkCoin>> _refreshSparkCoinsMempoolCheck({
-    required Set<String> privateKeyHexSet,
+    Set<String>? privateKeyHexSet,
     required int groupId,
   }) async {
     final start = DateTime.now();
@@ -920,6 +920,10 @@ mixin SparkInterface<T extends ElectrumXCurrencyInterface>
 
           LibSpark.deleteFullViewKey(viewKey);
         } else {
+          if (privateKeyHexSet == null) {
+            throw Exception("internal error: privateKeyHexSet is null");
+          }
+
           // run identify off main isolate
           myCoins = await computeWithLibSparkLogging(
             _identifyCoins,
@@ -1097,13 +1101,8 @@ mixin SparkInterface<T extends ElectrumXCurrencyInterface>
           .filter()
           .typeEqualTo(AddressType.spark)
           .findAll();
-      final root = await getRootHDNode();
-      final Set<String> privateKeyHexSet = sparkAddresses
-          .map(
-            (e) =>
-                root.derivePath(e.derivationPath!.value).privateKey.data.toHex,
-          )
-          .toSet();
+
+      Set<String>? privateKeyHexSet;
 
       // try to identify any coins in the unchecked set data
       final List<SparkCoin> newlyIdCoins = [];
@@ -1133,6 +1132,8 @@ mixin SparkInterface<T extends ElectrumXCurrencyInterface>
 
           LibSpark.deleteFullViewKey(viewKey);
         } else {
+          final root = await getRootHDNode();
+          privateKeyHexSet = sparkAddresses.map( (e) => root.derivePath(e.derivationPath!.value).privateKey.data.toHex).toSet();
           myCoins = await computeWithLibSparkLogging(
             _identifyCoins,
             (
@@ -1166,10 +1167,17 @@ mixin SparkInterface<T extends ElectrumXCurrencyInterface>
       }
 
       // check for spark coins in mempool
-      final mempoolMyCoins = await _refreshSparkCoinsMempoolCheck(
-        privateKeyHexSet: privateKeyHexSet,
-        groupId: latestGroupId,
-      );
+      List<SparkCoin> mempoolMyCoins;
+      if (privateKeyHexSet != null) {
+        mempoolMyCoins = await _refreshSparkCoinsMempoolCheck(
+          privateKeyHexSet: privateKeyHexSet,
+          groupId: latestGroupId,
+        );
+      } else {
+        mempoolMyCoins = await _refreshSparkCoinsMempoolCheck(
+          groupId: latestGroupId,
+        );
+      }
       // if any were found, add to database
       if (mempoolMyCoins.isNotEmpty) {
         await mainDB.isar.writeTxn(() async {
