@@ -922,19 +922,19 @@ mixin SparkInterface<T extends ElectrumXCurrencyInterface>
         } else {
           if (privateKeyHexSet == null) {
             throw Exception("internal error: privateKeyHexSet is null");
+          } else {
+            // run identify off main isolate
+            myCoins = await computeWithLibSparkLogging(
+              _identifyCoins,
+              (
+                anonymitySetCoins: rawCoins,
+                groupId: groupId,
+                privateKeyHexSet: privateKeyHexSet,
+                walletId: walletId,
+                isTestNet: cryptoCurrency.network.isTestNet,
+              ),
+            );
           }
-
-          // run identify off main isolate
-          myCoins = await computeWithLibSparkLogging(
-            _identifyCoins,
-            (
-              anonymitySetCoins: rawCoins,
-              groupId: groupId,
-              privateKeyHexSet: privateKeyHexSet,
-              walletId: walletId,
-              isTestNet: cryptoCurrency.network.isTestNet,
-            ),
-          );
         }
 
         // add checked txids after identification
