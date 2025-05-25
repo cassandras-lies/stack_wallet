@@ -45,6 +45,7 @@ import 'confirm_recovery_dialog.dart';
 import 'sub_widgets/restore_failed_dialog.dart';
 import 'sub_widgets/restore_succeeded_dialog.dart';
 import 'sub_widgets/restoring_dialog.dart';
+import '../../../wallets/wallet/impl/firo_wallet.dart';
 
 class RestoreViewOnlyWalletView extends ConsumerStatefulWidget {
   const RestoreViewOnlyWalletView({
@@ -273,6 +274,10 @@ class _RestoreViewOnlyWalletViewState
 
           case const (XelisWallet):
             await (wallet as XelisWallet).init(isRestore: true);
+            break;
+
+          case const (FiroWallet):
+            await (wallet as FiroWallet).init();
             break;
 
           default:

@@ -153,6 +153,19 @@ mixin SparkInterface<T extends ElectrumXCurrencyInterface>
   }
 
   @override
+  Future<Address> checkSaveInitialReceivingAddress() async {
+    final address = await getCurrentReceivingSparkAddress();
+    if (address == null) {
+      final address = await generateNextSparkAddress();
+      await mainDB.putAddress(address);
+    }
+    if (address == null) {
+      throw Exception('Failed to generate or retrieve a Spark receiving address.');
+    }
+    return address;
+  }
+
+  @override
   Future<void> init() async {
     try {
       Address? address = await getCurrentReceivingSparkAddress();
@@ -162,7 +175,6 @@ mixin SparkInterface<T extends ElectrumXCurrencyInterface>
       } // TODO add other address types to wallet info?
 
       if (_sparkChangeAddressCached == null) {
-        final root = await getRootHDNode();
         final String derivationPath;
         if (cryptoCurrency.network.isTestNet) {
           derivationPath =
@@ -170,14 +182,12 @@ mixin SparkInterface<T extends ElectrumXCurrencyInterface>
         } else {
           derivationPath = "$kSparkBaseDerivationPath$kDefaultSparkIndex";
         }
-        final keys = root.derivePath(derivationPath);
 
         if (isViewOnly) {
           final walletData = await getViewOnlyWalletData();
           if (walletData is SparkViewOnlyWalletData) {
             final fullViewKey = LibSpark.deserializeFullViewKey(
               fullViewKeyHex: walletData.viewKey,
-              index: kDefaultSparkIndex,
             );
             final address = await LibSpark.getAddressFromFullViewKey(
               fullViewKey: fullViewKey,
@@ -187,8 +197,12 @@ mixin SparkInterface<T extends ElectrumXCurrencyInterface>
             );
             _sparkChangeAddressCached = address;
             LibSpark.deleteFullViewKey(fullViewKey);
+          } else {
+            throw Exception("An internal error occurred");
           }
         } else {
+          final root = await getRootHDNode();
+          final keys = root.derivePath(derivationPath);
           _sparkChangeAddressCached = await LibSpark.getAddress(
             privateKey: keys.privateKey.data,
             index: kDefaultSparkIndex,
@@ -203,9 +217,11 @@ mixin SparkInterface<T extends ElectrumXCurrencyInterface>
     }
 
     // await info.updateReceivingAddress(
-    //   newAddress: address.value,
+    //   newAddress: _sparkChangeAddressCached!,
     //   isar: mainDB.isar,
     // );
+
+    debugPrint("sparkChangeAddress: $_sparkChangeAddressCached");
 
     await super.init();
   }
@@ -249,22 +265,15 @@ mixin SparkInterface<T extends ElectrumXCurrencyInterface>
       diversifier++;
     }
 
-    final root = await getRootHDNode();
-    final String derivationPath;
-    if (cryptoCurrency.network.isTestNet) {
-      derivationPath = "$kSparkBaseDerivationPathTestnet$kDefaultSparkIndex";
-    } else {
-      derivationPath = "$kSparkBaseDerivationPath$kDefaultSparkIndex";
-    }
-    final keys = root.derivePath(derivationPath);
+    String addressString;
+    List<byte> publicKey = [];
+    String derivationPath;
 
-    final String addressString;
     if (isViewOnly) {
       final walletData = await getViewOnlyWalletData();
       if (walletData is SparkViewOnlyWalletData) {
         final fullViewKey = LibSpark.deserializeFullViewKey(
           fullViewKeyHex: walletData.viewKey,
-          index: kDefaultSparkIndex,
         );
         addressString = await LibSpark.getAddressFromFullViewKey(
           fullViewKey: fullViewKey,
@@ -273,10 +282,21 @@ mixin SparkInterface<T extends ElectrumXCurrencyInterface>
           isTestNet: cryptoCurrency.network.isTestNet,
         );
         LibSpark.deleteFullViewKey(fullViewKey);
+
+        derivationPath = "not-a-derivation-path-spark-view-only";
       } else {
         throw Exception("Wallet data is not a SparkViewOnlyWalletData");
       }
     } else {
+      final root = await getRootHDNode();
+      if (cryptoCurrency.network.isTestNet) {
+        derivationPath = "$kSparkBaseDerivationPathTestnet$kDefaultSparkIndex";
+      } else {
+        derivationPath = "$kSparkBaseDerivationPath$kDefaultSparkIndex";
+      }
+      final keys = root.derivePath(derivationPath);
+      publicKey = keys.publicKey.data;
+
       addressString = await LibSpark.getAddress(
         privateKey: keys.privateKey.data,
         index: kDefaultSparkIndex,
@@ -288,7 +308,7 @@ mixin SparkInterface<T extends ElectrumXCurrencyInterface>
     return Address(
       walletId: walletId,
       value: addressString,
-      publicKey: keys.publicKey.data,
+      publicKey: publicKey,
       derivationIndex: diversifier,
       derivationPath: DerivationPath()..value = derivationPath,
       type: AddressType.spark,
@@ -882,7 +902,6 @@ mixin SparkInterface<T extends ElectrumXCurrencyInterface>
           if (walletData is SparkViewOnlyWalletData) {
             viewKey = LibSpark.deserializeFullViewKey(
               fullViewKeyHex: walletData.viewKey,
-              index: kDefaultSparkIndex,
             );
           } else {
             throw Exception("Wallet data is not a SparkViewOnlyWalletData");
@@ -1096,7 +1115,6 @@ mixin SparkInterface<T extends ElectrumXCurrencyInterface>
           if (walletData is SparkViewOnlyWalletData) {
             viewKey = LibSpark.deserializeFullViewKey(
               fullViewKeyHex: walletData.viewKey,
-              index: kDefaultSparkIndex,
             );
           } else {
             throw Exception("Wallet data is not a SparkViewOnlyWalletData");
@@ -1305,6 +1323,10 @@ mixin SparkInterface<T extends ElectrumXCurrencyInterface>
           .e("$runtimeType $walletId ${info.name}: ", error: e, stackTrace: s);
       rethrow;
     }
+  }
+
+  Future<void> recoverViewOnlyWallet() async {
+    await recoverSparkWallet(latestSparkCoinId: 0);
   }
 
   // modelled on CSparkWallet::CreateSparkMintTransactions https://github.com/firoorg/firo/blob/39c41e5e7ec634ced3700fe3f4f5509dc2e480d0/src/spark/sparkwallet.cpp#L752
