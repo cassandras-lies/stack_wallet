@@ -40,9 +40,9 @@ dependencies:
   # cs_monero compat (unpublished)
   compat:
     git:
-      url: https://github.com/cypherstack/cs_monero
+      url: https://github.com/cassandras-lies/cs_monero
       path: compat
-      ref: 44b8c0f8e1cc7ddbfa33c0b3f11279e64646138
+      ref: f4908c233280e5792f99ccd3b14c375eb0eaa70b
 
   flutter_libepiccash:
     path: ./crypto_plugins/flutter_libepiccash
@@ -205,8 +205,16 @@ dependencies:
   blockchain_utils: ^3.3.0
   on_chain: ^4.0.1
   cbor: ^6.3.3
-  cs_monero: 1.0.0-pre.3
-  cs_monero_flutter_libs: 1.0.0-pre.0
+  cs_monero:
+    git:
+      url: https://github.com/cassandras-lies/cs_monero
+      path: cs_monero
+      ref: f4908c233280e5792f99ccd3b14c375eb0eaa70b
+  cs_monero_flutter_libs:
+    git:
+      url: https://github.com/cassandras-lies/cs_monero
+      path: cs_monero_flutter_libs
+      ref: f4908c233280e5792f99ccd3b14c375eb0eaa70b
   monero_rpc: ^2.0.0
   digest_auth: ^1.0.1
 #  logger: ^2.5.0
