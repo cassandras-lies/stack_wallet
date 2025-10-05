@@ -57,7 +57,7 @@ class _TxKeyWidgetState extends ConsumerState<TxKeyWidget> {
         final wallet =
             ref.read(pWallets).getWallet(widget.walletId) as LibMoneroWallet;
 
-        _private = wallet.getTxKeyFor(txid: widget.txid);
+        _private = await wallet.getTxKeyFor(txid: widget.txid);
         if (_private!.isEmpty) {
           _private = "Unavailable";
         }

@@ -35,8 +35,8 @@ class ChurningService extends ChangeNotifier {
   bool done = false;
   Object? lastSeenError;
 
-  bool _canChurn() {
-    if (csWallet.getUnlockedBalance(accountIndex: kAccount) > BigInt.zero) {
+  Future<bool> _canChurn() async {
+    if (await csWallet.getUnlockedBalance(accountIndex: kAccount) > BigInt.zero) {
       return true;
     } else {
       return false;
@@ -120,7 +120,7 @@ class ChurningService extends ChangeNotifier {
     bool complete() => !continuous && roundsCompleted >= roundsToDo;
 
     while (!complete() && _running) {
-      if (_canChurn()) {
+      if (await _canChurn()) {
         waitingForUnlockedBalance = ChurnStatus.success;
         makingChurnTransaction = ChurnStatus.running;
         notifyListeners();
@@ -187,7 +187,7 @@ class ChurningService extends ChangeNotifier {
   Future<void> _churnTxSimple({
     final TransactionPriority priority = TransactionPriority.normal,
   }) async {
-    final address = csWallet.getAddress(
+    final address = await csWallet.getAddress(
       accountIndex: kAccount,
       addressIndex: 0,
     );

@@ -162,13 +162,13 @@ abstract class LibMoneroWallet<T extends CryptonoteCurrency>
 
   void invalidSeedLengthCheck(int length);
 
-  bool walletExists(String path);
+  Future<bool> walletExists(String path);
 
-  String getTxKeyFor({required String txid}) {
+  Future<String> getTxKeyFor({required String txid}) async {
     if (libMoneroWallet == null) {
       throw Exception("Cannot get tx key in uninitialized libMoneroWallet");
     }
-    return libMoneroWallet!.getTxKey(txid);
+    return await libMoneroWallet!.getTxKey(txid);
   }
 
   void _setListener() {
@@ -214,7 +214,7 @@ abstract class LibMoneroWallet<T extends CryptonoteCurrency>
 
     Address? currentAddress = await getCurrentReceivingAddress();
     if (currentAddress == null) {
-      currentAddress = addressFor(index: 0);
+      currentAddress = await addressFor(index: 0);
       await mainDB.updateOrPutAddresses([currentAddress]);
     }
     if (info.cachedReceivingAddress != currentAddress.value) {
@@ -263,8 +263,8 @@ abstract class LibMoneroWallet<T extends CryptonoteCurrency>
     await libMoneroWallet!.save();
   }
 
-  Address addressFor({required int index, int account = 0}) {
-    final address = libMoneroWallet!.getAddress(
+  Future<Address> addressFor({required int index, int account = 0}) async {
+    final address = await libMoneroWallet!.getAddress(
       accountIndex: account,
       addressIndex: index,
     );
@@ -296,10 +296,10 @@ abstract class LibMoneroWallet<T extends CryptonoteCurrency>
     try {
       return CWKeyData(
         walletId: walletId,
-        publicViewKey: base.getPublicViewKey(),
-        privateViewKey: base.getPrivateViewKey(),
-        publicSpendKey: base.getPublicSpendKey(),
-        privateSpendKey: base.getPrivateSpendKey(),
+        publicViewKey: await base.getPublicViewKey(),
+        privateViewKey: await base.getPrivateViewKey(),
+        publicSpendKey: await base.getPublicSpendKey(),
+        privateSpendKey: await base.getPrivateSpendKey(),
       );
     } catch (e, s) {
       Logging.instance.f("getKeys failed: ", error: e, stackTrace: s);
@@ -327,13 +327,15 @@ abstract class LibMoneroWallet<T extends CryptonoteCurrency>
     }
     await loadWallet(path: path, password: password);
     final wallet = libMoneroWallet!;
-    return (wallet.getAddress().value, wallet.getPrivateViewKey());
+    final address = await wallet.getAddress();
+    final privateViewKey = await wallet.getPrivateViewKey();
+    return (address.value, privateViewKey);
   }
 
   @override
   Future<void> init({bool? isRestore, int? wordCount}) async {
     final path = await pathForWallet(name: walletId, type: compatType);
-    if (!(walletExists(path)) && isRestore != true) {
+    if (!(await walletExists(path)) && isRestore != true) {
       if (wordCount == null) {
         throw Exception("Missing word count for new xmr/wow wallet!");
       }
@@ -350,7 +352,7 @@ abstract class LibMoneroWallet<T extends CryptonoteCurrency>
           seedOffset: "", // default for non restored wallets for now
         );
 
-        final height = wallet.getRefreshFromBlockHeight();
+        final height = await wallet.getRefreshFromBlockHeight();
 
         await info.updateRestoreHeight(
           newRestoreHeight: height,
@@ -361,7 +363,7 @@ abstract class LibMoneroWallet<T extends CryptonoteCurrency>
         // before wallet.init() is called
         await secureStorageInterface.write(
           key: Wallet.mnemonicKey(walletId: walletId),
-          value: wallet.getSeed().trim(),
+          value: (await wallet.getSeed()).trim(),
         );
         await secureStorageInterface.write(
           key: Wallet.mnemonicPassphraseKey(walletId: walletId),
@@ -444,7 +446,7 @@ abstract class LibMoneroWallet<T extends CryptonoteCurrency>
                 walletId: walletId,
                 derivationIndex: 0,
                 derivationPath: null,
-                value: wallet.getAddress().value,
+                value: (await wallet.getAddress()).value,
                 publicKey: [],
                 type: AddressType.cryptonote,
                 subType: AddressSubType.receiving,
@@ -695,7 +697,7 @@ abstract class LibMoneroWallet<T extends CryptonoteCurrency>
   Future<Amount> get availableBalance async {
     try {
       return Amount(
-        rawValue: libMoneroWallet!.getUnlockedBalance(),
+        rawValue: await libMoneroWallet!.getUnlockedBalance(),
         fractionDigits: cryptoCurrency.fractionDigits,
       );
     } catch (_) {
@@ -705,7 +707,7 @@ abstract class LibMoneroWallet<T extends CryptonoteCurrency>
 
   Future<Amount> get totalBalance async {
     try {
-      final full = libMoneroWallet?.getBalance();
+      final full = await libMoneroWallet?.getBalance();
       if (full != null) {
         return Amount(
           rawValue: full,
@@ -1141,7 +1143,7 @@ abstract class LibMoneroWallet<T extends CryptonoteCurrency>
       final newReceivingIndex =
           currentReceiving == null ? 0 : currentReceiving.derivationIndex + 1;
 
-      final newReceivingAddress = addressFor(index: newReceivingIndex);
+      final newReceivingAddress = await addressFor(index: newReceivingIndex);
 
       // Add that new receiving address
       await mainDB.putAddress(newReceivingAddress);
@@ -1198,7 +1200,7 @@ abstract class LibMoneroWallet<T extends CryptonoteCurrency>
         final newReceivingIndex = curIndex + 1;
 
         // Use new index to derive a new receiving address
-        final newReceivingAddress = addressFor(index: newReceivingIndex);
+        final newReceivingAddress = await addressFor(index: newReceivingIndex);
 
         final existing =
             await mainDB
@@ -1469,7 +1471,7 @@ abstract class LibMoneroWallet<T extends CryptonoteCurrency>
               walletId: walletId,
               derivationIndex: 0,
               derivationPath: null,
-              value: wallet.getAddress().value,
+              value: (await wallet.getAddress()).value,
               publicKey: [],
               type: AddressType.cryptonote,
               subType: AddressSubType.receiving,
