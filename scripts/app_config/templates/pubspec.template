@@ -229,8 +229,16 @@ dependencies:
   drift: ^2.28.2
   drift_flutter: ^0.2.7
   path: ^1.9.1
-  cs_salvium: ^1.2.1
-  cs_salvium_flutter_libs: ^1.0.4
+  cs_salvium:
+    git:
+      url: https://github.com/cassandras-lies/cs_salvium
+      path: packages/cs_salvium
+      ref: 8ea6aa29f2a50a1570d906b7290841dbd1f3e15a
+  cs_salvium_flutter_libs:
+    git:
+      url: https://github.com/cassandras-lies/cs_salvium
+      path: packages/cs_salvium_flutter_libs
+      ref: 8ea6aa29f2a50a1570d906b7290841dbd1f3e15a
   flutter_mwebd: ^0.0.1-pre.8
   mweb_client: ^0.2.0
   fixnum: ^1.1.1
