@@ -239,7 +239,10 @@ dependencies:
       url: https://github.com/cassandras-lies/cs_salvium
       path: packages/cs_salvium_flutter_libs
       ref: 8ea6aa29f2a50a1570d906b7290841dbd1f3e15a
-  flutter_mwebd: ^0.0.1-pre.8
+  flutter_mwebd:
+    git:
+      url: https://github.com/cassandras-lies/flutter_mwebd.git
+      ref: 801657082d48b136271993ee8b5a13bb00b6b924
   mweb_client: ^0.2.0
   fixnum: ^1.1.1
 
